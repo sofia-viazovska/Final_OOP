@@ -6,12 +6,15 @@ import Controllers.RoomBookingController;
 import Models.Hotel;
 import Models.Room;
 import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
@@ -28,8 +31,61 @@ import javafx.stage.Stage;
  */
 public class Main extends Application {
 
+    // Controllers for handling hotel search and room booking functionality
+    private RoomBookingController roomBookingController;
+    private HotelFindController hotelFindController;
+
     @Override
     public void start(Stage primaryStage) {
+        // Create a loading indicator
+        ProgressIndicator loadingIndicator = new ProgressIndicator();
+        loadingIndicator.setMaxSize(100, 100);
+
+        // Create a label for the loading message
+        Label loadingLabel = new Label("Initializing data...");
+        loadingLabel.setStyle("-fx-font-size: 14px;");
+
+        // Create a vertical box for the loading indicator and message
+        VBox loadingBox = new VBox(20, loadingIndicator, loadingLabel);
+        loadingBox.setAlignment(Pos.CENTER);
+
+        // Create a scene with the loading indicator
+        Scene loadingScene = new Scene(loadingBox, 300, 200);
+
+        // Set the loading scene and show the stage
+        primaryStage.setScene(loadingScene);
+        primaryStage.setTitle("Booking System");
+        primaryStage.show();
+
+        // Create a task for asynchronous data initialization
+        Task<Void> initDataTask = new Task<>() {
+            @Override
+            protected Void call() {
+                initializeSampleData();
+                return null;
+            }
+        };
+
+        // Handle task completion
+        initDataTask.setOnSucceeded(event -> {
+            // Create controllers for handling hotel search and room booking functionality
+            roomBookingController = new RoomBookingController();
+            hotelFindController = new HotelFindController(roomBookingController);
+
+            // Set up the UI on the JavaFX Application Thread
+            Platform.runLater(() -> {
+                setupUI(primaryStage);
+            });
+        });
+
+        // Start the task in a new thread
+        new Thread(initDataTask).start();
+    }
+
+    /**
+     * Initializes sample data for hotels and rooms
+     */
+    private void initializeSampleData() {
         /* ===== SAMPLE DATA INITIALIZATION ===== */
         // Create and add sample hotels organized by city
 
@@ -120,7 +176,13 @@ public class Main extends Application {
         HotelFindController.addRoom(new Room(lakesideHotel, "Lake View", 160, 8, "Room with beautiful lake views"));
         HotelFindController.addRoom(new Room(historicInn, "Historic Suite", 180, 5, "Suite in the historic wing"));
         HotelFindController.addRoom(new Room(universityLodge, "Scholar Room", 90, 20, "Comfortable room near campus"));
+    }
 
+    /**
+     * Sets up the user interface
+     * @param primaryStage The primary stage for the application
+     */
+    private void setupUI(Stage primaryStage) {
         /* ===== USER INTERFACE SETUP ===== */
         // Create and configure UI components for the booking form
 
@@ -184,9 +246,7 @@ public class Main extends Application {
         resultsContainer.setPadding(new Insets(10));
         resultsContainer.setSpacing(5);
 
-        // Create controllers for handling hotel search and room booking functionality
-        RoomBookingController roomBookingController = new RoomBookingController();
-        HotelFindController hotelFindController = new HotelFindController(roomBookingController);
+        // Controllers are already created in the start method and stored as instance variables
 
         /* ===== EVENT HANDLERS ===== */
         // Define actions for user interactions

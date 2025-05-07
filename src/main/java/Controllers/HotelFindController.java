@@ -2,6 +2,8 @@ package Controllers;
 
 import Models.Hotel;
 import Models.Room;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -82,35 +84,69 @@ public class HotelFindController {
         // Clear previous results
         resultsContainer.getChildren().clear();
 
-        // Find hotels in the specified city
-        List<Hotel> foundHotels = findHotelsByCity(city);
+        // Add a loading message
+        Label loadingLabel = new Label("Searching for hotels...");
+        resultsContainer.getChildren().add(loadingLabel);
 
-        if (foundHotels.isEmpty()) {
-            // Display message when no hotels are found
-            Label noHotelsLabel = new Label("No hotels available");
-            resultsContainer.getChildren().add(noHotelsLabel);
-        } else {
-            // Display each found hotel with a View button
-            for (Hotel hotel : foundHotels) {
-                // Create a horizontal box for hotel information and button
-                HBox hotelBox = new HBox(10);
-                hotelBox.setPadding(new Insets(5));
-
-                // Create a vertical box for hotel details
-                VBox hotelInfo = new VBox(5);
-                Label hotelLabel = new Label(hotel.getName() + " - " + hotel.getStars() + " stars");
-                Label hotelDesc = new Label(hotel.getDescription());
-                hotelInfo.getChildren().addAll(hotelLabel, hotelDesc);
-
-                // Create View button with action to display rooms
-                Button viewButton = new Button("View");
-                viewButton.setOnAction(e -> displayRoomsForHotel(hotel, resultsContainer, checkInDate, checkOutDate));
-
-                // Add hotel info and button to the hotel box
-                hotelBox.getChildren().addAll(hotelInfo, viewButton);
-                resultsContainer.getChildren().add(hotelBox);
+        // Create a task for asynchronous hotel search
+        Task<List<Hotel>> searchTask = new Task<>() {
+            @Override
+            protected List<Hotel> call() {
+                // Find hotels in the specified city
+                return findHotelsByCity(city);
             }
-        }
+        };
+
+        // Handle task completion
+        searchTask.setOnSucceeded(event -> {
+            // Get the search results
+            List<Hotel> foundHotels = searchTask.getValue();
+
+            // Update UI on JavaFX Application Thread
+            Platform.runLater(() -> {
+                // Clear the loading message
+                resultsContainer.getChildren().clear();
+
+                if (foundHotels.isEmpty()) {
+                    // Display message when no hotels are found
+                    Label noHotelsLabel = new Label("No hotels available");
+                    resultsContainer.getChildren().add(noHotelsLabel);
+                } else {
+                    // Display each found hotel with a View button
+                    for (Hotel hotel : foundHotels) {
+                        // Create a horizontal box for hotel information and button
+                        HBox hotelBox = new HBox(10);
+                        hotelBox.setPadding(new Insets(5));
+
+                        // Create a vertical box for hotel details
+                        VBox hotelInfo = new VBox(5);
+                        Label hotelLabel = new Label(hotel.getName() + " - " + hotel.getStars() + " stars");
+                        Label hotelDesc = new Label(hotel.getDescription());
+                        hotelInfo.getChildren().addAll(hotelLabel, hotelDesc);
+
+                        // Create View button with action to display rooms
+                        Button viewButton = new Button("View");
+                        viewButton.setOnAction(e -> displayRoomsForHotel(hotel, resultsContainer, checkInDate, checkOutDate));
+
+                        // Add hotel info and button to the hotel box
+                        hotelBox.getChildren().addAll(hotelInfo, viewButton);
+                        resultsContainer.getChildren().add(hotelBox);
+                    }
+                }
+            });
+        });
+
+        // Handle task failure
+        searchTask.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                resultsContainer.getChildren().clear();
+                Label errorLabel = new Label("Error searching for hotels. Please try again.");
+                resultsContainer.getChildren().add(errorLabel);
+            });
+        });
+
+        // Start the task in a new thread
+        new Thread(searchTask).start();
     }
 
     /**
@@ -146,67 +182,104 @@ public class HotelFindController {
         // Add back button and hotel header to the container
         resultsContainer.getChildren().addAll(backButton, hotelHeader);
 
-        // Find all rooms for this hotel
-        List<Room> hotelRooms = findRoomsByHotel(hotel);
+        // Add a loading message
+        Label loadingLabel = new Label("Loading rooms...");
+        resultsContainer.getChildren().add(loadingLabel);
 
-        if (hotelRooms.isEmpty()) {
-            // Display message when no rooms are available
-            Label noRoomsLabel = new Label("No rooms available");
-            resultsContainer.getChildren().add(noRoomsLabel);
-        } else {
-            // Calculate the total stay duration in days
-            long days = ChronoUnit.DAYS.between(checkInDate, checkOutDate);
-            if (days < 1) days = 1; // Ensure minimum stay is 1 day
+        // Create a task for asynchronous room search
+        Task<List<Room>> roomSearchTask = new Task<>() {
+            @Override
+            protected List<Room> call() {
+                // Find all rooms for this hotel
+                return findRoomsByHotel(hotel);
+            }
+        };
 
-            // Display each room with details, pricing, and booking option
-            for (Room room : hotelRooms) {
-                // Create a styled container for room information
-                VBox roomBox = new VBox(5);
-                roomBox.setPadding(new Insets(10));
-                roomBox.setStyle("-fx-border-color: lightgray; -fx-border-radius: 5;");
+        // Handle task completion
+        roomSearchTask.setOnSucceeded(event -> {
+            // Get the search results
+            List<Room> hotelRooms = roomSearchTask.getValue();
 
-                // Create labels for room details
-                Label typeLabel = new Label("Type: " + room.getType());
-                Label descLabel = new Label("Description: " + room.getDescription());
-                Label priceLabel = new Label("Price per day: $" + room.getPrice());
+            // Update UI on JavaFX Application Thread
+            Platform.runLater(() -> {
+                // Calculate the total stay duration in days
+                final long days = ChronoUnit.DAYS.between(checkInDate, checkOutDate) < 1 ? 1 :
+                                  ChronoUnit.DAYS.between(checkInDate, checkOutDate);
+                // Remove the loading message
+                resultsContainer.getChildren().remove(loadingLabel);
 
-                // Calculate and display total price for the entire stay
-                Label totalLabel = new Label("Total for " + days + " days: $" + (room.getPrice() * days));
+                if (hotelRooms.isEmpty()) {
+                    // Display message when no rooms are available
+                    Label noRoomsLabel = new Label("No rooms available");
+                    resultsContainer.getChildren().add(noRoomsLabel);
+                } else {
+                    // Display each room with details, pricing, and booking option
+                    for (Room room : hotelRooms) {
+                        // Create a styled container for room information
+                        VBox roomBox = new VBox(5);
+                        roomBox.setPadding(new Insets(10));
+                        roomBox.setStyle("-fx-border-color: lightgray; -fx-border-radius: 5;");
 
-                // Show how many rooms of this type are available
-                Label availableLabel = new Label("Available: " + room.getAvailable());
+                        // Create labels for room details
+                        Label typeLabel = new Label("Type: " + room.getType());
+                        Label descLabel = new Label("Description: " + room.getDescription());
+                        Label priceLabel = new Label("Price per day: $" + room.getPrice());
 
-                // Add all room details to the room container
-                roomBox.getChildren().addAll(typeLabel, descLabel, priceLabel, totalLabel, availableLabel);
+                        // Calculate and display total price for the entire stay
+                        Label totalLabel = new Label("Total for " + days + " days: $" + (room.getPrice() * days));
 
-                // Create "Add to Cart" button
-                Button addToCartButton = new Button("Add to Cart");
+                        // Show how many rooms of this type are available
+                        Label availableLabel = new Label("Available: " + room.getAvailable());
 
-                // Set action for the "Add to Cart" button
-                addToCartButton.setOnAction(e -> {
-                    // Add room to cart
-                    boolean added = bookingController.addToCart(room);
+                        // Add all room details to the room container
+                        roomBox.getChildren().addAll(typeLabel, descLabel, priceLabel, totalLabel, availableLabel);
 
-                    if (added) {
-                        // Update UI to reflect new availability
+                        // Create "Add to Cart" button
+                        Button addToCartButton = new Button("Add to Cart");
+
+                        // Set action for the "Add to Cart" button
+                        addToCartButton.setOnAction(e -> {
+                            // Add room to cart
+                            boolean added = bookingController.addToCart(room);
+
+                            if (added) {
+                                // Update UI to reflect new availability
+                                bookingController.updateRoomUI(roomBox, room, addToCartButton, availableLabel);
+
+                                // Show confirmation message
+                                Label confirmLabel = new Label("Room added to cart!");
+                                confirmLabel.setStyle("-fx-text-fill: green;");
+                                roomBox.getChildren().add(confirmLabel);
+                            }
+                        });
+
+                        // Add the button to the room box
+                        roomBox.getChildren().add(addToCartButton);
+
+                        // Update UI based on initial availability
                         bookingController.updateRoomUI(roomBox, room, addToCartButton, availableLabel);
 
-                        // Show confirmation message
-                        Label confirmLabel = new Label("Room added to cart!");
-                        confirmLabel.setStyle("-fx-text-fill: green;");
-                        roomBox.getChildren().add(confirmLabel);
+                        // Add the room box to the results container
+                        resultsContainer.getChildren().add(roomBox);
                     }
-                });
+                }
+            });
+        });
 
-                // Add the button to the room box
-                roomBox.getChildren().add(addToCartButton);
+        // Handle task failure
+        roomSearchTask.setOnFailed(event -> {
+            Platform.runLater(() -> {
+                // Remove the loading message
+                resultsContainer.getChildren().remove(loadingLabel);
 
-                // Update UI based on initial availability
-                bookingController.updateRoomUI(roomBox, room, addToCartButton, availableLabel);
+                // Display error message
+                Label errorLabel = new Label("Error loading rooms. Please try again.");
+                errorLabel.setStyle("-fx-text-fill: red;");
+                resultsContainer.getChildren().add(errorLabel);
+            });
+        });
 
-                // Add the room box to the results container
-                resultsContainer.getChildren().add(roomBox);
-            }
-        }
+        // Start the task in a new thread
+        new Thread(roomSearchTask).start();
     }
 }
