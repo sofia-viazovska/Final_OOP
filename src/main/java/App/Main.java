@@ -5,6 +5,7 @@ import Controllers.HotelFindController;
 import Controllers.RoomBookingController;
 import Models.Hotel;
 import Models.Room;
+import Models.User;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -14,12 +15,16 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
+import java.time.LocalDate;
 
 /**
  * Main application class for the Hotel Booking System.
@@ -35,8 +40,104 @@ public class Main extends Application {
     private RoomBookingController roomBookingController;
     private HotelFindController hotelFindController;
 
+    // Currently logged in user
+    private User currentUser;
+
     @Override
     public void start(Stage primaryStage) {
+        // Show login UI first
+        showLoginUI(primaryStage);
+    }
+
+    /**
+     * Shows the login UI to authenticate the user
+     * @param primaryStage The primary stage for the application
+     */
+    private void showLoginUI(Stage primaryStage) {
+        // Create a new stage for the login form
+        primaryStage.setTitle("Login - Booking System");
+
+        // Create a grid pane for the login form
+        GridPane grid = new GridPane();
+        grid.setAlignment(Pos.CENTER);
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(25, 25, 25, 25));
+
+        // Create a scene with the grid pane
+        Scene scene = new Scene(grid, 400, 300);
+        primaryStage.setScene(scene);
+
+        // Add a welcome label
+        Label welcomeLabel = new Label("Welcome to Booking System");
+        welcomeLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
+        grid.add(welcomeLabel, 0, 0, 2, 1);
+
+        // Add labels and text fields for nickname, password, and email
+       //Label nicknameLabel = new Label("Nickname:");
+        //grid.add(nicknameLabel, 0, 1);
+
+        //TextField nicknameField = new TextField();
+        //grid.add(nicknameField, 1, 1);
+
+        Label emailLabel = new Label("Email:");
+        grid.add(emailLabel, 0, 3);
+
+        TextField emailField = new TextField();
+        grid.add(emailField, 1, 3);
+
+        Label passwordLabel = new Label("Password:");
+        grid.add(passwordLabel, 0, 2);
+
+        PasswordField passwordField = new PasswordField();
+        grid.add(passwordField, 1, 2);
+
+        // Add login button
+        Button loginButton = new Button("Login");
+        HBox hbBtn = new HBox(10);
+        hbBtn.setAlignment(Pos.BOTTOM_RIGHT);
+        hbBtn.getChildren().add(loginButton);
+        grid.add(hbBtn, 1, 4);
+
+        // Add message label for errors or success
+        Label messageLabel = new Label();
+        messageLabel.setStyle("-fx-text-fill: red;");
+        grid.add(messageLabel, 0, 5, 2, 1);
+
+        // Set action for the login button
+        loginButton.setOnAction(e -> {
+            // Get the input values
+            String password = passwordField.getText().trim();
+            String email = emailField.getText().trim();
+
+            // Validate input
+            if (password.isEmpty() || email.isEmpty()) {
+                messageLabel.setText("Please fill in all fields");
+                return;
+            }
+
+            // Validate email format (basic check)
+            if (!email.contains("@") || !email.contains(".")) {
+                messageLabel.setText("Please enter a valid email address");
+                return;
+            }
+
+            // Create user object
+            currentUser = new User(email, password);
+
+            // Show loading screen and initialize data
+            showLoadingAndInitialize(primaryStage);
+        });
+
+        // Show the login form
+        primaryStage.show();
+    }
+
+    /**
+     * Shows loading screen and initializes data
+     * @param primaryStage The primary stage for the application
+     */
+    private void showLoadingAndInitialize(Stage primaryStage) {
         // Create a loading indicator
         ProgressIndicator loadingIndicator = new ProgressIndicator();
         loadingIndicator.setMaxSize(100, 100);
@@ -186,12 +287,37 @@ public class Main extends Application {
         /* ===== USER INTERFACE SETUP ===== */
         // Create and configure UI components for the booking form
 
+        // Top bar with nickname, cart button, and logout button
+        Label nicknameLabel = new Label("User: " + currentUser.getNickName());
+        nicknameLabel.setPadding(new Insets(10));
+        nicknameLabel.setStyle("-fx-font-weight: bold;");
+
+        Button cartButton = new Button("Cart");
+        cartButton.setPadding(new Insets(5));
+        cartButton.setAlignment(Pos.TOP_RIGHT);
+        cartButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
+        // Cart button event handler will be set after all UI components are defined
+
+        Button logoutButton = new Button("Log out");
+        logoutButton.setPadding(new Insets(5));
+        logoutButton.setOnAction(e -> logout(primaryStage));
+
+        HBox topBar = new HBox();
+        topBar.setPadding(new Insets(10));
+        topBar.setSpacing(10);
+        topBar.getChildren().addAll(nicknameLabel);
+
+        // Push cart and logout buttons to the right
+        HBox.setHgrow(nicknameLabel, javafx.scene.layout.Priority.ALWAYS);
+        topBar.getChildren().addAll(logoutButton, cartButton);
+
         // Application title
         Label nameLabel = new Label("Booking System");
-        //nameLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        nameLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
         nameLabel.setPadding(new Insets(20));
         nameLabel.setAlignment(Pos.CENTER);
         HBox nameBox = new HBox(nameLabel);
+        nameBox.setAlignment(Pos.CENTER);
 
         // Check-in date input section
         Label checkInDate = new Label("Check-in Date:");
@@ -232,13 +358,8 @@ public class Main extends Application {
         Button findButton = new Button("Find");
         findButton.setPadding(new Insets(10));
 
-        // View Cart button
-        Button viewCartButton = new Button("View Cart");
-        viewCartButton.setPadding(new Insets(10));
-        viewCartButton.setStyle("-fx-background-color: #4CAF50; -fx-text-fill: white;");
-
-        // Add buttons to a horizontal box
-        HBox findButtonBox = new HBox(10, findButton, viewCartButton);
+        // Add button to a horizontal box
+        HBox findButtonBox = new HBox(10, findButton);
         findButtonBox.setAlignment(Pos.CENTER);
 
         // Container for displaying search results
@@ -246,24 +367,59 @@ public class Main extends Application {
         resultsContainer.setPadding(new Insets(10));
         resultsContainer.setSpacing(5);
 
+        // Wrap results in a scroll pane for scrolling
+        ScrollPane resultsScrollPane = new ScrollPane(resultsContainer);
+        resultsScrollPane.setFitToWidth(true);
+        resultsScrollPane.setPrefHeight(300);
+
+        // Error message label
+        Label errorMessageLabel = new Label();
+        errorMessageLabel.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
+        errorMessageLabel.setPadding(new Insets(5, 0, 5, 0));
+
+        // Wrap the error message label in an HBox for centering
+        HBox errorMessageBox = new HBox(errorMessageLabel);
+        errorMessageBox.setAlignment(Pos.CENTER);
+        errorMessageBox.setVisible(false);
+
         // Controllers are already created in the start method and stored as instance variables
 
         /* ===== EVENT HANDLERS ===== */
         // Define actions for user interactions
 
-        // View Cart button click handler
-        viewCartButton.setOnAction(event -> {
+        // Cart button click handler
+        cartButton.setOnAction(event -> {
             // Validate that date pickers have values
             if (datePickerIn.getValue() == null || datePickerOut.getValue() == null) {
-                System.out.println("Please select dates before viewing cart.");
+                errorMessageLabel.setText("Please select dates before viewing cart.");
+                errorMessageBox.setVisible(true);
                 return;
             }
+
+            // Validate check-in date is not before today
+            if (datePickerIn.getValue().isBefore(LocalDate.now())) {
+                errorMessageLabel.setText("Check-in date cannot be before today.");
+                errorMessageBox.setVisible(true);
+                return;
+            }
+
+            // Validate check-out date is after check-in date
+            if (datePickerOut.getValue().isBefore(datePickerIn.getValue()) ||
+                datePickerOut.getValue().isEqual(datePickerIn.getValue())) {
+                errorMessageLabel.setText("Check-out date must be after check-in date.");
+                errorMessageBox.setVisible(true);
+                return;
+            }
+
+            // Clear any previous error messages
+            errorMessageBox.setVisible(false);
 
             // Create CartController and display cart
             CartController cartController = new CartController(
                 roomBookingController,
                 datePickerIn.getValue(),
-                datePickerOut.getValue()
+                datePickerOut.getValue(),
+                currentUser
             );
             cartController.displayCart();
         });
@@ -275,7 +431,23 @@ public class Main extends Application {
 
             // Validate that date pickers have values
             if (datePickerIn.getValue() == null || datePickerOut.getValue() == null) {
-                System.out.println("Please select dates.");
+                errorMessageLabel.setText("Please select dates.");
+                errorMessageBox.setVisible(true);
+                return;
+            }
+
+            // Validate check-in date is not before today
+            if (datePickerIn.getValue().isBefore(LocalDate.now())) {
+                errorMessageLabel.setText("Check-in date cannot be before today.");
+                errorMessageBox.setVisible(true);
+                return;
+            }
+
+            // Validate check-out date is after check-in date
+            if (datePickerOut.getValue().isBefore(datePickerIn.getValue()) ||
+                datePickerOut.getValue().isEqual(datePickerIn.getValue())) {
+                errorMessageLabel.setText("Check-out date must be after check-in date.");
+                errorMessageBox.setVisible(true);
                 return;
             }
 
@@ -285,8 +457,12 @@ public class Main extends Application {
 
             // Validate that all required fields are filled
             if (city.isEmpty() || checkIn.isEmpty() || checkOut.isEmpty()) {
-                System.out.println("Please fill in all fields.");
+                errorMessageLabel.setText("Please fill in all fields.");
+                errorMessageBox.setVisible(true);
             } else {
+                // Clear any previous error messages
+                errorMessageBox.setVisible(false);
+
                 // Log search parameters and perform the search
                 System.out.println("Searching for hotels in " + city + " from " + checkIn + " to " + checkOut);
 
@@ -297,7 +473,7 @@ public class Main extends Application {
 
         /* ===== FINAL UI ASSEMBLY ===== */
         // Arrange all UI components in the main layout
-        VBox root = new VBox(nameBox, Dates, cityBox, findButtonBox, resultsContainer);
+        VBox root = new VBox(topBar, nameBox, Dates, cityBox, findButtonBox, errorMessageBox, resultsScrollPane);
 
         // Create the scene with the root layout and set dimensions
         Scene scene = new Scene(root, 650, 600);
@@ -306,6 +482,18 @@ public class Main extends Application {
         primaryStage.setScene(scene);
         primaryStage.setTitle("Booking System");
         primaryStage.show();
+    }
+
+    /**
+     * Handles user logout
+     * @param primaryStage The primary stage for the application
+     */
+    private void logout(Stage primaryStage) {
+        // Reset the current user
+        currentUser = null;
+
+        // Return to the login screen
+        showLoginUI(primaryStage);
     }
 
     /**
