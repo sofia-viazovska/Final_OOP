@@ -1,0 +1,22 @@
+Booking Date: 2025-05-07
+
+Check-in Date: 2025-05-11
+Check-out Date: 2025-05-19
+
+BOOKING DETAILS:
+===============================
+
+Hotel: Ocean View
+City: Miami
+Room Type: Premium Suite
+Description: Premium suite with private balcony
+Price: $3600,00
+
+Hotel: Palm Suites
+City: Miami
+Room Type: Cabana
+Description: Room with direct pool access
+Price: $1200,00
+
+===============================
+TOTAL PRICE: $4800,00

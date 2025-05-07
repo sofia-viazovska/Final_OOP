@@ -1,0 +1,22 @@
+Booking Date: 2025-05-07
+
+Check-in Date: 2025-05-09
+Check-out Date: 2025-05-25
+
+BOOKING DETAILS:
+===============================
+
+Hotel: Palm Suites
+City: Miami
+Room Type: Standard
+Description: Comfortable room for families
+Price: $1600,00
+
+Hotel: Beach Resort
+City: Miami
+Room Type: Pool View
+Description: Room overlooking the pool area
+Price: $2400,00
+
+===============================
+TOTAL PRICE: $4000,00
